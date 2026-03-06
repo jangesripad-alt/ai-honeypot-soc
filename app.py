@@ -7,10 +7,13 @@ import os
 
 app = Flask(__name__)
 
-# DATABASE
-MONGO_URI = "mongodb+srv://YASH:SRIPAD@cluster0.jy5apii.mongodb.net/?appName=Cluster0"
+# DATABASE CONNECTION
+MONGO_URI = os.environ.get(
+    "MONGO_URI",
+    "mongodb+srv://YASH:SRIPAD@cluster0.jy5apii.mongodb.net/ai_honeypot?retryWrites=true&w=majority"
+)
 
-client = MongoClient(os.environ.get(MONGO_URI, serverSelectionTimeoutMS=5000))
+client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
 
 db = client["ai_honeypot"]
 logs_collection = db["logs"]
@@ -60,7 +63,6 @@ def get_geo(ip):
     lon = None
 
     try:
-
         geo = requests.get(
             f"http://ip-api.com/json/{ip}",
             timeout=3
@@ -95,7 +97,6 @@ def log_attack(service, username, password):
     logs_collection.insert_one({
 
         "service": service,
-
         "ip": ip,
         "username": username,
         "password": password,
@@ -115,7 +116,7 @@ def log_attack(service, username, password):
     })
 
 
-# MAIN LOGIN 
+# MAIN LOGIN
 @app.route("/", methods=["GET", "POST"])
 def login():
 
@@ -134,8 +135,7 @@ def login():
     return render_template("login.html")
 
 
-
-# ADMIN PANEL 
+# ADMIN PANEL HONEYPOT
 @app.route("/admin", methods=["GET", "POST"])
 def admin_panel():
 
@@ -181,7 +181,6 @@ def dashboard():
     top_attack = Counter(attacks).most_common(1)[0][0] if attacks else "N/A"
     highest_attempt = max(attempts) if attempts else 0
 
-
     timeline = defaultdict(int)
 
     for log in logs:
@@ -192,9 +191,8 @@ def dashboard():
             key = ts.strftime("%H:%M")
             timeline[key] += 1
 
-    timeline_labels = list(sorted(timeline.keys()))
+    timeline_labels = sorted(timeline.keys())
     timeline_counts = [timeline[k] for k in timeline_labels]
-
 
     attack_locations = []
 
@@ -235,7 +233,7 @@ def dashboard():
     )
 
 
-# LIVE API
+# API LOGS
 @app.route("/api/logs")
 def api_logs():
 
