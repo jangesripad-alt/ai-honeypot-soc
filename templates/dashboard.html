@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>AI Honeypot SOC Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="main-container">
+
+<div class="header">
+
+<h1>AI Honeypot Security Dashboard</h1>
+
+<div class="stats-inline">
+<span>Total: {{ total_attempts }}</span>
+<span>Unique IPs: {{ unique_ips }}</span>
+</div>
+
+</div>
+
+
+<div class="analytics-container">
+
+<div class="analytics-box">
+<span class="analytics-label">Top Attacking IP</span>
+<span class="analytics-value">{{ top_ip }}</span>
+</div>
+
+<div class="analytics-box">
+<span class="analytics-label">Most Targeted User</span>
+<span class="analytics-value">{{ top_user }}</span>
+</div>
+
+<div class="analytics-box">
+<span class="analytics-label">Highest Attempts</span>
+<span class="analytics-value">{{ highest_attempt }}</span>
+</div>
+
+<div class="analytics-box">
+<span class="analytics-label">Most Common Attack</span>
+<span class="analytics-value">{{ top_attack }}</span>
+</div>
+
+</div>
+
+
+
+
+<div class="dashboard-grid">
+
+<div class="chart-card">
+
+<h3>Attack Type Distribution</h3>
+
+<canvas id="attackChart"></canvas>
+
+</div>
+
+
+
+<div class="chart-card">
+
+<h3>Targeted Services</h3>
+
+<canvas id="serviceChart"></canvas>
+
+</div>
+
+</div>
+
+
+<div class="table-card">
+
+<h3>Recent Activity</h3>
+
+<table>
+
+<thead>
+<tr>
+<th>Service</th>
+<th>IP</th>
+<th>User</th>
+<th>Attempts</th>
+<th>Attack</th>
+<th>Risk</th>
+<th>Time</th>
+</tr>
+</thead>
+
+<tbody id="logTable">
+
+{% for log in logs %}
+
+<tr class="logRow">
+
+<td>{{ log.service }}</td>
+<td>{{ log.ip }}</td>
+<td>{{ log.username }}</td>
+<td>{{ log.attempt_count }}</td>
+<td>{{ log.attack_type }}</td>
+<td class="risk-{{ log.risk_level|lower }}">{{ log.risk_level }}</td>
+<td>{{ log.timestamp }}</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+<div style="margin-top:15px">
+
+<div class="pagination">
+<button onclick="prevPage()">Previous</button>
+<button onclick="nextPage()">Next</button>
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+<div class="timeline-card">
+
+<h3>Attack Timeline</h3>
+
+<canvas id="timelineChart"></canvas>
+
+</div>
+
+
+
+<div class="map-card">
+
+<h3>Attack Origin Map</h3>
+
+<div id="attackMap"></div>
+
+</div>
+
+
+
+
+
+
+<script>
+
+const attackCtx = document.getElementById('attackChart');
+
+new Chart(attackCtx, {
+
+type:'doughnut',
+
+data:{
+labels:[
+'Brute Force',
+'Credential Stuffing',
+'Username Enumeration',
+'Bot Attack',
+'Normal'
+],
+
+datasets:[{
+data:[
+{{ brute_force_count }},
+{{ suspicious_count }},
+{{ normal_count }},
+1,
+1
+],
+backgroundColor:[
+'#ef4444',
+'#f59e0b',
+'#3b82f6',
+'#9333ea',
+'#22c55e'
+]
+}]
+},
+
+options:{
+plugins:{
+legend:{position:'bottom'}
+}
+}
+
+});
+
+</script>
+
+
+
+<script>
+
+const serviceCtx = document.getElementById('serviceChart');
+
+new Chart(serviceCtx,{
+
+type:'bar',
+
+data:{
+labels:['Web Login','Admin Panel'],
+datasets:[{
+label:'Attack Count',
+data:[5,3],
+backgroundColor:'#3b82f6'
+}]
+},
+
+options:{
+plugins:{legend:{display:false}},
+scales:{y:{beginAtZero:true}}
+}
+
+});
+
+</script>
+
+
+
+<script>
+
+const timelineCtx=document.getElementById('timelineChart');
+
+new Chart(timelineCtx,{
+
+type:'line',
+
+data:{
+labels:{{ timeline_labels | tojson }},
+datasets:[{
+label:"Attacks",
+data:{{ timeline_counts | tojson }},
+borderColor:"#ef4444",
+backgroundColor:"rgba(239,68,68,0.15)",
+fill:true,
+tension:0.4
+}]
+},
+
+options:{
+plugins:{legend:{display:false}}
+}
+
+});
+
+</script>
+
+
+
+<script>
+
+var map=L.map('attackMap').setView([20,78],2);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+var attacks={{ attack_locations | tojson }};
+
+attacks.forEach(function(a){
+
+if(a.lat && a.lon){
+
+L.circleMarker([a.lat,a.lon],{
+radius:6,
+color:"#ef4444"
+}).addTo(map)
+
+}
+
+});
+
+</script>
+
+
+
+<script>
+
+let rows=document.querySelectorAll(".logRow");
+
+let currentPage=1;
+let rowsPerPage=10;
+
+function showPage(page){
+
+currentPage=page;
+
+let start=(page-1)*rowsPerPage;
+let end=start+rowsPerPage;
+
+rows.forEach((row,index)=>{
+
+row.style.display=(index>=start && index<end) ? "" : "none";
+
+});
+
+}
+
+function nextPage(){
+
+if(currentPage*rowsPerPage<rows.length){
+showPage(currentPage+1)
+}
+
+}
+
+function prevPage(){
+
+if(currentPage>1){
+showPage(currentPage-1)
+}
+
+}
+
+showPage(1);
+
+</script>
+
+
+
+<script>
+
+setTimeout(function(){
+location.reload();
+},5000);
+
+</script>
+
+</body>
+</html>

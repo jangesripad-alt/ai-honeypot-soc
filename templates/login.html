@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Secure Authentication Portal</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body class="login-body">
+
+<div class="login-wrapper">
+
+<div class="login-card">
+
+<h2>Secure Login</h2>
+<p class="subtitle">Authorized Personnel Only</p>
+
+{% if error %}
+<div class="error-box">
+⚠ {{ error }}
+</div>
+{% endif %}
+
+<form method="POST">
+
+<input
+type="text"
+name="username"
+placeholder="Username"
+required
+autocomplete="off"
+/>
+
+<input
+type="password"
+name="password"
+placeholder="Password"
+required
+autocomplete="off"
+/>
+
+<button type="submit" id="loginBtn">
+Authenticate
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+
+<script>
+
+document.querySelector("form").addEventListener("submit", function(){
+
+let button = document.getElementById("loginBtn");
+
+button.innerText = "Authenticating...";
+button.disabled = true;
+
+});
+
+</script>
+
+</body>
+</html>
