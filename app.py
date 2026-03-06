@@ -63,15 +63,17 @@ def get_geo(ip):
     lon = None
 
     try:
+
         geo = requests.get(
-            f"http://ip-api.com/json/{ip}",
+            f"http://ip-api.com/json/{ip}?fields=status,country,city,lat,lon",
             timeout=3
         ).json()
 
-        country = geo.get("country")
-        city = geo.get("city")
-        lat = geo.get("lat")
-        lon = geo.get("lon")
+        if geo.get("status") == "success":
+            country = geo.get("country")
+            city = geo.get("city")
+            lat = geo.get("lat")
+            lon = geo.get("lon")
 
     except:
         pass
@@ -82,7 +84,12 @@ def get_geo(ip):
 # SAVE ATTACK LOG
 def log_attack(service, username, password):
 
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    forwarded = request.headers.get("X-Forwarded-For")
+
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
+    else:
+        ip = request.remote_addr
 
     user_agent = request.headers.get("User-Agent")
 
@@ -97,6 +104,7 @@ def log_attack(service, username, password):
     logs_collection.insert_one({
 
         "service": service,
+
         "ip": ip,
         "username": username,
         "password": password,
@@ -181,6 +189,7 @@ def dashboard():
     top_attack = Counter(attacks).most_common(1)[0][0] if attacks else "N/A"
     highest_attempt = max(attempts) if attempts else 0
 
+
     timeline = defaultdict(int)
 
     for log in logs:
@@ -193,6 +202,7 @@ def dashboard():
 
     timeline_labels = sorted(timeline.keys())
     timeline_counts = [timeline[k] for k in timeline_labels]
+
 
     attack_locations = []
 
@@ -207,6 +217,7 @@ def dashboard():
                 "lat": lat,
                 "lon": lon
             })
+
 
     return render_template(
 
@@ -233,7 +244,7 @@ def dashboard():
     )
 
 
-# API LOGS
+# LIVE API
 @app.route("/api/logs")
 def api_logs():
 
